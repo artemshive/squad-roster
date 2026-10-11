@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Squad Roster – Drag & Drop</title>
+<style>
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+--bg:#f6f7f9;--fg:#1b1f24;--panel:#fff;--line:#c9cfd8;
+--c1:#f8d7da;--c1b:#c0392b;--c2:#d6e9ff;--c2b:#2471c8;--c3:#fff0c2;--c3b:#c68a00;--c4:#ffe0cc;--c4b:#d35400;--c5:#d9f2d9;--c5b:#2e8b3e}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#15181c;--fg:#e8eaed;--panel:#1f2328;--line:#434a54;
+--c1:#4a2326;--c2:#1f3652;--c3:#4a3d12;--c4:#4d2e1a;--c5:#1f4024}}
+:root[data-theme="dark"]{--bg:#15181c;--fg:#e8eaed;--panel:#1f2328;--line:#434a54;--c1:#4a2326;--c2:#1f3652;--c3:#4a3d12;--c4:#4d2e1a;--c5:#1f4024}
+html,body{margin:0;background:var(--bg);color:var(--fg);font-family:system-ui,-apple-system,Segoe UI,sans-serif}
+main{max-width:1150px;margin:0 auto;padding:18px 14px 40px}
+h1{font-size:1.35rem;margin:0 0 4px}
+.sub{font-size:.85rem;opacity:.75;margin:0 0 14px}
+.wrap{overflow-x:auto;border:1px solid var(--line);border-radius:10px;background:var(--panel)}
+table{border-collapse:separate;border-spacing:0;width:100%;min-width:780px}
+th,td{padding:8px;vertical-align:top;border-bottom:1px solid var(--line);font-size:.85rem;text-align:left}
+th{font-size:.78rem;text-transform:uppercase;letter-spacing:.05em}
+td.name{font-weight:700;white-space:nowrap;width:1%}
+td.slot{width:30%}
+.empty{border:2px dashed var(--line);border-radius:8px;padding:22px 8px;text-align:center;opacity:.6;font-size:.8rem}
+.card{border-left:6px solid;border-radius:8px;padding:8px 10px;cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none;position:relative;box-shadow:0 1px 3px rgba(0,0,0,.15)}
+.card .cat{display:block;font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px}
+.card .role{font-weight:700;outline:none}
+.card .desc{display:block;font-size:.8rem;margin-top:2px;outline:none}
+.card.editing{cursor:text;user-select:text;-webkit-user-select:text;touch-action:auto;box-shadow:0 0 0 2px var(--c2b)}
+.card.dragging{opacity:.25}
+.ghost{position:fixed;z-index:999;pointer-events:none;transform:rotate(2deg);box-shadow:0 10px 24px rgba(0,0,0,.35);margin:0}
+.k1{background:var(--c1);border-color:var(--c1b)}.k2{background:var(--c2);border-color:var(--c2b)}
+.k3{background:var(--c3);border-color:var(--c3b)}.k4{background:var(--c4);border-color:var(--c4b)}.k5{background:var(--c5);border-color:var(--c5b)}
+.over{outline:3px dashed var(--c2b);outline-offset:-3px;background-color:rgba(36,113,200,.12)}
+h2{font-size:1rem;margin:22px 0 8px}
+.pal{display:flex;flex-wrap:wrap;gap:8px}
+.pal .card{padding:6px 12px;min-width:150px}
+.pal .card .role{font-size:.85rem}
+.bench{min-height:84px;border:2px dashed var(--line);border-radius:10px;padding:10px;display:flex;flex-wrap:wrap;gap:8px;background:var(--panel)}
+.bench .card{width:260px;max-width:100%}
+.bench .hint{opacity:.55;font-size:.85rem;align-self:center;margin:auto}
+.card .cp{position:absolute;top:4px;right:4px;margin:0;padding:1px 7px;font-size:.85rem;line-height:1.3;cursor:copy;border-radius:6px;opacity:.7}
+.card .cp:hover{opacity:1}
+.card .cat{padding-right:30px}
+.benchrow{display:flex;gap:10px;align-items:stretch}
+.benchrow .bench{flex:1;min-width:0}
+.trash{flex:0 0 96px;min-height:96px;border:2px dashed #c0392b;border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;background:var(--panel);color:#c0392b;font-weight:700;user-select:none}
+.trash span{font-size:1.8rem;line-height:1}
+.trash small{font-size:.72rem;text-transform:uppercase;letter-spacing:.05em}
+.trash.over{background:rgba(192,57,43,.2);outline:3px solid #c0392b;outline-offset:-3px}
+button{font:inherit;font-size:.85rem;padding:6px 12px;border-radius:8px;border:1px solid var(--line);background:var(--panel);color:var(--fg);cursor:pointer;margin-top:14px}
+</style></head><body><main>
+<h1>Squad Roster – Drag &amp; Drop</h1>
+<p class="sub">Drag any card out of the table to the Bench, drop one from the palette or bench into a slot, or drag between slots to swap. Double-click a card to rename it. Hit the ⧉ button on a card to copy that role to the Bench, then drag the copy to another player.</p>
+<div class="wrap"><table>
+<thead><tr><th>Player</th><th>Primary</th><th>Secondary</th><th>Tertiary</th></tr></thead>
+<tbody id="body"></tbody></table></div>
+<h2>Category Palette <span style="font-weight:400;opacity:.6;font-size:.8rem">(drag to add a fresh card – unlimited copies)</span></h2>
+<div class="pal" id="pal"></div>
+<h2>Bench <span style="font-weight:400;opacity:.6;font-size:.8rem">(drop cards here to take them out of play)</span></h2>
+<div class="benchrow"><div class="bench" id="bench" data-zone="bench"></div><div class="trash" data-zone="trash" title="Drop a card here to delete it"><span>🗑</span><small>Delete</small></div></div>
+<button id="reset">Reset to original roster</button>
+</main>
+<script>
+const CATS={1:'Leadership & Strategy',2:'Intel & Recon',3:'Engineering & Upkeep',4:'Scrap & Combat Gear',5:'Logistics & Supply'};
+const PLAYERS=['Artem (DB Specialist)','Aaron "Sweat" (Shot-Caller)','Andreas (Base Engineer)','Cullen (Explorer & Resources)','Jas "Diesel" (Quartermaster)'];
+const INIT=[
+[[4,'Double Barrel Rusher','Hunts early DBs, metal pipes, and shells to win early-wipe fights.'],[2,'3rd Blueprint Hunter','Joins monument runs to secure additional cards and loot crates.'],[5,'Backup Resource Farmer','Assists with node/wood runs when crafting ammo or expanding.']],
+[[1,'Primary Shot-Caller','Calls targets, flanks, and retreat timing in open-field fights and raids.'],[2,'Primary Blueprint Hunter','Spearheads main monument runs at Launch Site, Tunnels, and Oil Rigs.'],[3,'Workbench & Tech Lead','Decides what items to research on the Tech Tree.']],
+[[3,'Main Base Engineer & Electrician','Designs base layout, manages armored bunkers, and wires electrical/industrial systems.'],[2,'Secondary Blueprint Hunter','Pairs up with Aaron on keycard puzzles and monument clears.'],[4,'Secondary Tech Rusher','Runs recycling routes to fuel workbench scrap costs.']],
+[[5,'Lead Resource Farmer','Keeps stone, metal, wood, and sulfur flowing for upkeep and explosives.'],[2,'Forward Scout','Monitors surrounding compounds and spots enemy auto-turrets.'],[3,'Secondary Builder','Helps drop honeycomb and seal walls during online raids.']],
+[[4,'Quartermaster','Keeps boxes organized, crafts med syringes, and prepares roam kits.'],[5,'Diesel Specialist','Runs Monument Quarries and Giant Excavator for high-yield resources.'],[3,'Build Support','Assists Andreas with armored bunkers and base upgrades.']]];
+const KEY='squad_roster_v1';
+let S;
+function fresh(){const s={cards:{},cells:[],bench:[],next:1};
+ INIT.forEach(r=>{const row=[];r.forEach(([cat,role,desc])=>{const id='k'+s.next++;s.cards[id]={cat,role,desc};row.push(id)});s.cells.push(row)});return s}
+function load(){try{const t=localStorage.getItem(KEY);if(t){const s=JSON.parse(t);if(s&&s.cells)return s}}catch(e){}return fresh()}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
+S=load();
+
+function mk(id,card,src,p,t){
+ const d=document.createElement('div');d.className='card k'+card.cat;d.dataset.src=src;
+ if(id)d.dataset.id=id;if(p!=null){d.dataset.p=p;d.dataset.t=t}
+ const c=document.createElement('span');c.className='cat';c.textContent=CATS[card.cat];
+ const r=document.createElement('span');r.className='role';r.textContent=card.role;
+ d.append(c,r);
+ if(src!=='palette'){const b=document.createElement('button');b.className='cp';b.title='Copy this role to the Bench';b.setAttribute('aria-label','Copy role');b.textContent='⧉';d.append(b)}
+ if(card.desc){const x=document.createElement('span');x.className='desc';x.textContent=card.desc;d.append(x)}
+ return d}
+function render(){
+ const body=document.getElementById('body');body.innerHTML='';
+ S.cells.forEach((row,p)=>{const tr=document.createElement('tr');
+  const n=document.createElement('td');n.className='name';n.textContent=PLAYERS[p];tr.append(n);
+  row.forEach((id,t)=>{const td=document.createElement('td');td.className='slot';td.dataset.zone='cell';td.dataset.p=p;td.dataset.t=t;
+   if(id)td.append(mk(id,S.cards[id],'cell',p,t));else{const e=document.createElement('div');e.className='empty';e.textContent='Drop a card here';td.append(e)}
+   tr.append(td)});
+  body.append(tr)});
+ const b=document.getElementById('bench');b.innerHTML='';
+ if(!S.bench.length){const h=document.createElement('span');h.className='hint';h.textContent='Bench is empty – drag cards here';b.append(h)}
+ S.bench.forEach(id=>b.append(mk(id,S.cards[id],'bench')));
+ const pal=document.getElementById('pal');pal.innerHTML='';
+ Object.keys(CATS).forEach(k=>{const d=mk(null,{cat:+k,role:CATS[k]},'palette');d.dataset.cat=k;pal.append(d)});
+ save()}
+
+let st=null,drag=null,hot=null;
+function zoneAt(x,y){const el=document.elementFromPoint(x,y);return el?el.closest('[data-zone]'):null}
+document.addEventListener('pointerdown',e=>{
+ const el=e.target.closest('.card');if(!el||el.classList.contains('editing')||e.button>0)return;
+ st={el,x:e.clientX,y:e.clientY}});
+document.addEventListener('pointermove',e=>{
+ if(!st)return;
+ if(!drag){if(Math.hypot(e.clientX-st.x,e.clientY-st.y)<6)return;
+  const r=st.el.getBoundingClientRect();const g=st.el.cloneNode(true);g.classList.add('ghost');g.style.width=r.width+'px';
+  document.body.append(g);st.el.classList.add('dragging');drag={g,ox:st.x-r.left,oy:st.y-r.top}}
+ drag.g.style.left=(e.clientX-drag.ox)+'px';drag.g.style.top=(e.clientY-drag.oy)+'px';
+ const z=zoneAt(e.clientX,e.clientY);
+ if(hot&&hot!==z)hot.classList.remove('over');
+ hot=z;if(z)z.classList.add('over');
+ e.preventDefault()},{passive:false});
+function end(e,cancel){
+ if(!st)return;
+ if(drag){
+  const z=cancel?null:zoneAt(e.clientX,e.clientY);
+  drag.g.remove();if(hot)hot.classList.remove('over');hot=null;
+  if(z)drop(st.el,z);
+  drag=null;render()}
+ st=null}
+document.addEventListener('pointerup',e=>end(e,false));
+document.addEventListener('pointercancel',e=>end(e,true));
+
+function drop(el,z){
+ const src=el.dataset.src;let id=el.dataset.id;
+ const sp=+el.dataset.p,stt=+el.dataset.t;
+ if(z.dataset.zone==='trash'){
+  if(src==='palette')return;
+  if(src==='cell')S.cells[sp][stt]=null;
+  if(src==='bench')S.bench=S.bench.filter(x=>x!==id);
+  delete S.cards[id];return}
+ if(src==='palette'){id='k'+S.next++;S.cards[id]={cat:+el.dataset.cat,role:'New '+CATS[el.dataset.cat]+' role',desc:'Double-click to rename or describe.'}}
+ if(z.dataset.zone==='bench'){
+  if(src==='cell')S.cells[sp][stt]=null;
+  if(src==='bench')S.bench=S.bench.filter(x=>x!==id);
+  if(src!=='bench'||true)S.bench.push(id);
+  return}
+ const p=+z.dataset.p,t=+z.dataset.t,existing=S.cells[p][t];
+ if(src==='cell'&&p===sp&&t===stt)return;
+ if(src==='cell'){S.cells[sp][stt]=existing||null}
+ else{if(src==='bench')S.bench=S.bench.filter(x=>x!==id);if(existing)S.bench.push(existing)}
+ S.cells[p][t]=id}
+
+document.addEventListener('dblclick',e=>{
+ const el=e.target.closest('.card');if(!el||el.dataset.src==='palette')return;
+ el.classList.add('editing');
+ const r=el.querySelector('.role'),d=el.querySelector('.desc');
+ r.contentEditable=true;if(d)d.contentEditable=true;r.focus();
+ const sel=getSelection();sel.selectAllChildren(r);
+ el.addEventListener('focusout',function h(){setTimeout(()=>{
+  if(el.contains(document.activeElement))return;
+  el.removeEventListener('focusout',h);
+  const c=S.cards[el.dataset.id];if(c){c.role=r.textContent.trim()||c.role;if(d)c.desc=d.textContent.trim()}
+  render()},0)})});
+document.addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.closest('.card.editing')){e.preventDefault();e.target.blur()}});
+document.addEventListener('click',e=>{const b=e.target.closest('.cp');if(!b)return;const el=b.closest('.card');const o=S.cards[el.dataset.id];if(!o)return;const id='k'+S.next++;S.cards[id]={...o};S.bench.push(id);render();document.getElementById('bench').scrollIntoView({block:'nearest',behavior:'smooth'})});
+document.getElementById('reset').onclick=()=>{S=fresh();render()};
+render();
+</script></body></html>
